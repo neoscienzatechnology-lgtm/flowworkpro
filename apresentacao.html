@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServiceFlow Pro - Apresentação</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #06b6d4;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 80px 0;
+        }
+        
+        .pricing-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .pricing-card.featured {
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(79, 70, 229, 0.2);
+        }
+        
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .btn-demo {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-demo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+        
+        .badge-custom {
+            background: var(--primary-color);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .credentials-box {
+            background: #f8fafc;
+            border-left: 4px solid var(--primary-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .price-tag {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .price-period {
+            font-size: 18px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <span class="badge-custom mb-3">🚀 Sistema de Gestão Completo</span>
+                    <h1 class="display-4 fw-bold mb-4">ServiceFlow Pro</h1>
+                    <p class="lead mb-4">Plataforma completa para gestão de serviços técnicos, agendamentos e equipes. Aumente sua produtividade e satisfação do cliente.</p>
+                    <a href="https://serviceflow-frontend-nine.vercel.app" target="_blank" class="btn btn-demo btn-lg me-3">
+                        <i class="bi bi-play-circle me-2"></i>Testar Agora
+                    </a>
+                    <a href="#precos" class="btn btn-outline-light btn-lg">
+                        Ver Planos
+                    </a>
+                </div>
+                <div class="col-lg-6">
+                    <img src="https://illustrations.popsy.co/amber/web-design.svg" alt="ServiceFlow Pro" class="img-fluid">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Access Section -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold mb-3">🎯 Acesso de Demonstração</h2>
+                <p class="text-muted">Teste agora com credenciais reais</p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="credentials-box">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-shield-check text-primary fs-3 me-2"></i>
+                            <h5 class="mb-0">ADMINISTRADOR</h5>
+                        </div>
+                        <p class="text-muted small mb-3">Acesso total ao sistema</p>
+                        <div class="mb-2">
+                            <strong>Email:</strong>
+                            <code class="ms-2">admin@serviceflow.com</code>
+                        </div>
+                        <div>
+                            <strong>Senha:</strong>
+                            <code class="ms-2">123456</code>
+                        </div>
+                        <div class="mt-3">
+                            <span class="badge bg-success">✓ Todos os agendamentos</span>
+                            <span class="badge bg-success">✓ Gestão completa</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="credentials-box">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-person-badge text-info fs-3 me-2"></i>
+                            <h5 class="mb-0">TÉCNICO - João</h5>
+                        </div>
+                        <p class="text-muted small mb-3">Visão do técnico de campo</p>
+                        <div class="mb-2">
+                            <strong>Email:</strong>
+                            <code class="ms-2">joao@serviceflow.com</code>
+                        </div>
+                        <div>
+                            <strong>Senha:</strong>
+                            <code class="ms-2">123456</code>
+                        </div>
+                        <div class="mt-3">
+                            <span class="badge bg-info">1 agendamento amanhã</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="credentials-box">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="bi bi-person-badge text-warning fs-3 me-2"></i>
+                            <h5 class="mb-0">TÉCNICO - Maria</h5>
+                        </div>
+                        <p class="text-muted small mb-3">Visão do técnico de campo</p>
+                        <div class="mb-2">
+                            <strong>Email:</strong>
+                            <code class="ms-2">maria@serviceflow.com</code>
+                        </div>
+                        <div>
+                            <strong>Senha:</strong>
+                            <code class="ms-2">123456</code>
+                        </div>
+                        <div class="mt-3">
+                            <span class="badge bg-warning">1 agendamento semana que vem</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="https://serviceflow-frontend-nine.vercel.app" target="_blank" class="btn btn-demo btn-lg">
+                    <i class="bi bi-box-arrow-up-right me-2"></i>Acessar Sistema Demo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold mb-3">✨ Funcionalidades Principais</h2>
+                <p class="text-muted">Tudo que você precisa em um único lugar</p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon mx-auto">
+                            <i class="bi bi-calendar-check"></i>
+                        </div>
+                        <h5 class="fw-bold">Agendamentos Inteligentes</h5>
+                        <p class="text-muted">Gestão completa de agendamentos com notificações automáticas</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon mx-auto">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <h5 class="fw-bold">Gestão de Clientes</h5>
+                        <p class="text-muted">Cadastro completo com histórico de serviços e preferências</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon mx-auto">
+                            <i class="bi bi-receipt"></i>
+                        </div>
+                        <h5 class="fw-bold">Faturamento</h5>
+                        <p class="text-muted">Emissão de faturas e controle financeiro integrado</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon mx-auto">
+                            <i class="bi bi-tools"></i>
+                        </div>
+                        <h5 class="fw-bold">Controle de Técnicos</h5>
+                        <p class="text-muted">Acompanhamento em tempo real da equipe técnica</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon mx-auto">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <h5 class="fw-bold">Relatórios</h5>
+                        <p class="text-muted">Dashboards e relatórios analíticos detalhados</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon mx-auto">
+                            <i class="bi bi-phone"></i>
+                        </div>
+                        <h5 class="fw-bold">Mobile Responsivo</h5>
+                        <p class="text-muted">Acesso total via smartphone e tablet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="precos" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold mb-3">💰 Planos e Investimento</h2>
+                <p class="text-muted">Escolha o plano ideal para o seu negócio</p>
+            </div>
+            
+            <!-- SaaS Plans -->
+            <h4 class="text-center mb-4">Modelo SaaS - Assinatura Mensal</h4>
+            <div class="row g-4 mb-5">
+                <div class="col-lg-4">
+                    <div class="card pricing-card">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-3">BÁSICO</h5>
+                            <div class="mb-4">
+                                <span class="price-tag">R$ 97</span>
+                                <span class="price-period">/mês</span>
+                            </div>
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Até 2 técnicos</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>50 agendamentos/mês</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Clientes ilimitados</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Suporte por email</li>
+                            </ul>
+                            <button class="btn btn-outline-primary w-100">Começar Agora</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="card pricing-card featured">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0">PROFISSIONAL</h5>
+                                <span class="badge bg-primary">POPULAR</span>
+                            </div>
+                            <div class="mb-4">
+                                <span class="price-tag">R$ 197</span>
+                                <span class="price-period">/mês</span>
+                            </div>
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Até 5 técnicos</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>200 agendamentos/mês</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Relatórios avançados</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Suporte prioritário</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Integrações API</li>
+                            </ul>
+                            <button class="btn btn-primary w-100">Começar Agora</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="card pricing-card">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-3">EMPRESARIAL</h5>
+                            <div class="mb-4">
+                                <span class="price-tag">R$ 397</span>
+                                <span class="price-period">/mês</span>
+                            </div>
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Técnicos ilimitados</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Agendamentos ilimitados</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Multi-empresa</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>API completa</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Suporte 24/7</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Customizações</li>
+                            </ul>
+                            <button class="btn btn-outline-primary w-100">Falar com Vendas</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alternative Models -->
+            <div class="row g-4 mt-5">
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-box-seam text-primary me-2"></i>Licença Perpétua (White Label)</h5>
+                            <div class="mb-3">
+                                <span class="h3 text-primary fw-bold">R$ 5.000 - R$ 15.000</span>
+                                <span class="text-muted"> (pagamento único)</span>
+                            </div>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Instalação em servidor próprio</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Código-fonte incluído</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>1 ano de atualizações</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>6 meses de suporte técnico</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Sem mensalidades</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-code-slash text-primary me-2"></i>Desenvolvimento Customizado</h5>
+                            <div class="mb-3">
+                                <span class="h3 text-primary fw-bold">R$ 8.000 - R$ 25.000</span>
+                            </div>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Sistema 100% personalizado</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Logo e branding customizado</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Funcionalidades específicas</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Treinamento completo</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hospedagem configurada</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2 class="fw-bold mb-4">Por que escolher o ServiceFlow Pro?</h2>
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                        <strong>100% Cloud</strong> - Acesse de qualquer lugar
+                    </div>
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                        <strong>Segurança</strong> - Dados criptografados e backups automáticos
+                    </div>
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                        <strong>Atualizações</strong> - Melhorias contínuas sem custo adicional
+                    </div>
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                        <strong>Suporte</strong> - Equipe técnica especializada
+                    </div>
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                        <strong>ROI Rápido</strong> - Retorno do investimento em 30 dias
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <img src="https://illustrations.popsy.co/amber/success.svg" alt="Benefícios" class="img-fluid">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Info Section -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold mb-3">🔧 Informações Técnicas</h2>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-cloud text-primary fs-1 mb-3"></i>
+                            <h5 class="fw-bold">Frontend URL</h5>
+                            <a href="https://serviceflow-frontend-nine.vercel.app" target="_blank" class="text-decoration-none">
+                                serviceflow-frontend-nine.vercel.app
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-server text-primary fs-1 mb-3"></i>
+                            <h5 class="fw-bold">Backend API</h5>
+                            <a href="https://serviceflow-backend.vercel.app" target="_blank" class="text-decoration-none">
+                                serviceflow-backend.vercel.app
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-database text-primary fs-1 mb-3"></i>
+                            <h5 class="fw-bold">Database</h5>
+                            <p class="mb-0">MongoDB Atlas<br><small class="text-muted">Cluster M0 Free Tier</small></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted mb-0">
+                    <i class="bi bi-shield-check text-success me-2"></i>
+                    Hospedagem 100% na Vercel - Infraestrutura escalável e confiável
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-5" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); color: white;">
+        <div class="container text-center">
+            <h2 class="fw-bold mb-3">Pronto para transformar seu negócio?</h2>
+            <p class="lead mb-4">Comece seu teste gratuito de 14 dias agora. Sem cartão de crédito necessário.</p>
+            <a href="https://serviceflow-frontend-nine.vercel.app" target="_blank" class="btn btn-light btn-lg me-3">
+                <i class="bi bi-play-circle me-2"></i>Testar Grátis
+            </a>
+            <a href="#precos" class="btn btn-outline-light btn-lg">
+                Ver Planos
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-4 bg-dark text-white">
+        <div class="container text-center">
+            <p class="mb-0">© 2025 ServiceFlow Pro. Todos os direitos reservados.</p>
+            <p class="mb-0 text-muted small">Desenvolvido com ❤️ usando React, Node.js e MongoDB</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
