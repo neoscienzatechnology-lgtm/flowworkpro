@@ -11,6 +11,7 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
+import { useAuth } from '../lib/auth';
 
 interface Category {
   id: string;
@@ -31,6 +32,7 @@ interface Product {
   price: number;
   active: boolean;
   totalStock?: number;
+  type?: 'component' | 'harness';
 }
 
 interface ProductForm {
@@ -44,6 +46,7 @@ interface ProductForm {
   cost: number;
   price: number;
   active: boolean;
+  type: 'component' | 'harness';
 }
 
 const productSchema = z.object({
@@ -57,6 +60,7 @@ const productSchema = z.object({
   cost: z.coerce.number().min(0, 'Mínimo 0'),
   price: z.coerce.number().min(0, 'Mínimo 0'),
   active: z.boolean(),
+  type: z.enum(['component', 'harness']),
 });
 
 const UNITS = ['UN', 'KG', 'L', 'M', 'CX', 'PC', 'PAR', 'DZ', 'M2', 'M3'];
@@ -165,8 +169,9 @@ function ProductModal({
           cost: product.cost,
           price: product.price,
           active: product.active,
+          type: product.type ?? 'component',
         }
-      : { unit: 'UN', minStock: 0, cost: 0, price: 0, active: true },
+      : { unit: 'UN', minStock: 0, cost: 0, price: 0, active: true, type: 'component' },
   });
 
   const mutation = useMutation({
@@ -289,6 +294,30 @@ function ProductModal({
           </div>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                {...register('type')}
+                type="radio"
+                value="component"
+                className="w-4 h-4 text-blue-600"
+              />
+              <span className="text-sm text-gray-700">Componente</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                {...register('type')}
+                type="radio"
+                value="harness"
+                className="w-4 h-4 text-green-600"
+              />
+              <span className="text-sm text-gray-700">Chicote</span>
+            </label>
+          </div>
+        </div>
+
         <div className="flex items-center gap-3">
           <input
             {...register('active')}
@@ -324,8 +353,11 @@ function ProductModal({
 export default function ProductsPage() {
   const { success, error } = useToast();
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canWrite = ['admin', 'manager'].includes(user?.role ?? '');
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
   const [editProduct, setEditProduct] = useState<Product | null | 'new'>('new');
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
@@ -333,9 +365,17 @@ export default function ProductsPage() {
   const limit = 20;
 
   const { data: productsData, isLoading } = useQuery({
-    queryKey: ['products', search, categoryId, page],
+    queryKey: ['products', search, categoryId, typeFilter, page],
     queryFn: async () => {
-      const res = await api.get('/products', { params: { search, categoryId: categoryId || undefined, page, limit } });
+      const res = await api.get('/products', {
+        params: {
+          search,
+          categoryId: categoryId || undefined,
+          type: typeFilter || undefined,
+          page,
+          limit,
+        },
+      });
       return res.data;
     },
   });
@@ -367,8 +407,8 @@ export default function ProductsPage() {
     <div className="space-y-6">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex gap-3 flex-1 max-w-xl">
-          <div className="relative flex-1">
+        <div className="flex gap-3 flex-1 max-w-2xl flex-wrap">
+          <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={search}
@@ -377,6 +417,15 @@ export default function ProductsPage() {
               className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          <select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todos</option>
+            <option value="component">Componente</option>
+            <option value="harness">Chicote</option>
+          </select>
           <select
             value={categoryId}
             onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}
@@ -388,13 +437,15 @@ export default function ProductsPage() {
             ))}
           </select>
         </div>
-        <button
-          onClick={() => setEditProduct(null)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Produto
-        </button>
+        {canWrite && (
+          <button
+            onClick={() => setEditProduct(null)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Produto
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -403,7 +454,7 @@ export default function ProductsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {['SKU', 'Nome', 'Categoria', 'EAN-13', 'Unid.', 'Estoque', 'Mín.', 'Custo', 'Preço', 'Status', 'Ações'].map((h) => (
+                {['SKU', 'Tipo', 'Nome', 'Categoria', 'EAN-13', 'Unid.', 'Estoque', 'Mín.', 'Custo', 'Preço', 'Status', 'Ações'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -412,7 +463,7 @@ export default function ProductsPage() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 11 }).map((_, j) => (
+                    {Array.from({ length: 12 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-gray-200 rounded animate-pulse" />
                       </td>
@@ -421,7 +472,7 @@ export default function ProductsPage() {
                 ))
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={12} className="px-4 py-12 text-center text-gray-400 text-sm">
                     Nenhum produto encontrado
                   </td>
                 </tr>
@@ -429,6 +480,13 @@ export default function ProductsPage() {
                 products.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-mono text-gray-600">{product.sku}</td>
+                    <td className="px-4 py-3">
+                      {product.type === 'harness' ? (
+                        <Badge variant="green">Chicote</Badge>
+                      ) : (
+                        <Badge variant="blue">Componente</Badge>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 max-w-[200px] truncate">{product.name}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{product.category?.name ?? '-'}</td>
                     <td className="px-4 py-3 text-sm font-mono text-gray-500">{product.ean13 ?? '-'}</td>

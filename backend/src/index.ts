@@ -14,6 +14,8 @@ import nfeRoutes from './routes/nfe';
 import reportRoutes from './routes/reports';
 import alertRoutes from './routes/alerts';
 import labelRoutes from './routes/labels';
+import bomRouter from './routes/bom';
+import assemblyRouter from './routes/assembly';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -39,6 +41,8 @@ app.use('/api/nfe', nfeRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/labels', labelRoutes);
+app.use('/api/bom', bomRouter);
+app.use('/api/assembly', assemblyRouter);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

@@ -17,6 +17,7 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   movements   StockMovement[]
+  assemblyOrders AssemblyOrder[]
 }
 
 model Company {
@@ -61,6 +62,7 @@ model Product {
   cost        Float          @default(0)
   price       Float          @default(0)
   active      Boolean        @default(true)
+  type        String         @default("component") // component | harness
   categoryId  String?
   category    Category?      @relation(fields: [categoryId], references: [id])
   createdAt   DateTime       @default(now())
@@ -69,6 +71,10 @@ model Product {
   movements   StockMovement[]
   batches     Batch[]
   nfeItems    NFeItem[]
+  bomItems       BomItem[]       @relation("HarnessBom")
+  usedInBoms     BomItem[]       @relation("ComponentInBom")
+  assemblyOrders AssemblyOrder[]
+  assemblyItems  AssemblyOrderItem[] @relation("ComponentItems")
 }
 
 model Batch {
@@ -159,4 +165,44 @@ model Alert {
   message     String
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
+}
+
+model BomItem {
+  id          String   @id @default(cuid())
+  harnessId   String
+  harness     Product  @relation("HarnessBom", fields: [harnessId], references: [id])
+  componentId String
+  component   Product  @relation("ComponentInBom", fields: [componentId], references: [id])
+  quantity    Float
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@unique([harnessId, componentId])
+}
+
+model AssemblyOrder {
+  id             String              @id @default(cuid())
+  code           String              @unique
+  harnessId      String
+  harness        Product             @relation(fields: [harnessId], references: [id])
+  warehouseId    String
+  quantity       Float
+  status         String              @default("pending") // pending, completed, cancelled
+  notes          String?
+  userId         String
+  user           User                @relation(fields: [userId], references: [id])
+  createdAt      DateTime            @default(now())
+  completedAt    DateTime?
+  items          AssemblyOrderItem[]
+}
+
+model AssemblyOrderItem {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             AssemblyOrder @relation(fields: [orderId], references: [id])
+  componentId       String
+  component         Product       @relation("ComponentItems", fields: [componentId], references: [id])
+  requiredQty       Float
+  consumedQty       Float         @default(0)
+  sourceWarehouseId String?
 }
