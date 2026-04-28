@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -44,9 +45,11 @@ app.use('/api/labels', labelRoutes);
 app.use('/api/bom', bomRouter);
 app.use('/api/assembly', assemblyRouter);
 
-// 404 handler
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({ success: false, error: 'Rota não encontrada' });
+// Serve frontend static files
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDist));
+app.get('/{*splat}', (_req: Request, res: Response) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
 // Error handler
