@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   ChevronRight,
+  ClipboardList,
+  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useQuery } from '@tanstack/react-query';
@@ -25,6 +27,8 @@ const navItems = [
   { to: '/categories', icon: Tag, label: 'Categorias' },
   { to: '/warehouses', icon: Warehouse, label: 'Depósitos' },
   { to: '/movements', icon: ArrowLeftRight, label: 'Movimentações' },
+  { to: '/bom', icon: ClipboardList, label: 'BOM' },
+  { to: '/assembly', icon: Wrench, label: 'Montagem' },
   { to: '/nfe', icon: FileText, label: 'NF-e' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/alerts', icon: Bell, label: 'Alertas' },
@@ -36,6 +40,8 @@ const pageTitles: Record<string, string> = {
   '/categories': 'Categorias',
   '/warehouses': 'Depósitos',
   '/movements': 'Movimentações',
+  '/bom': 'BOM — Lista de Materiais',
+  '/assembly': 'Ordens de Montagem',
   '/nfe': 'NF-e',
   '/reports': 'Relatórios',
   '/alerts': 'Alertas',

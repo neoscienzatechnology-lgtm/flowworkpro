@@ -13,6 +13,8 @@ import NfePage from './pages/NfePage';
 import ReportsPage from './pages/ReportsPage';
 import UsersPage from './pages/UsersPage';
 import AlertsPage from './pages/AlertsPage';
+import BomPage from './pages/BomPage';
+import AssemblyPage from './pages/AssemblyPage';
 import LoadingSpinner from './components/LoadingSpinner';
 
 const queryClient = new QueryClient({
@@ -51,6 +53,8 @@ function AppRoutes() {
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="warehouses" element={<WarehousesPage />} />
         <Route path="movements" element={<MovementsPage />} />
+        <Route path="bom" element={<BomPage />} />
+        <Route path="assembly" element={<AssemblyPage />} />
         <Route path="nfe" element={<NfePage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="users" element={<UsersPage />} />
