@@ -1,0 +1,209 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String
+  role        String   @default("operator") // admin, manager, operator, viewer
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  movements   StockMovement[]
+  assemblyOrders AssemblyOrder[]
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  cnpj        String   @unique
+  taxRegime   String   // Simples, Lucro Presumido, Lucro Real
+  state       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  products    Product[]
+}
+
+model Warehouse {
+  id          String         @id @default(cuid())
+  name        String
+  code        String         @unique
+  address     String?
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  balances    StockBalance[]
+  movements   StockMovement[]
+  fromTransfers StockMovement[] @relation("FromWarehouse")
+}
+
+model Product {
+  id          String         @id @default(cuid())
+  sku         String         @unique
+  name        String
+  description String?
+  ean13       String?        @unique
+  unit        String         @default("UN")
+  minStock    Float          @default(0)
+  cost        Float          @default(0)
+  price       Float          @default(0)
+  active      Boolean        @default(true)
+  type        String         @default("component") // component | harness
+  categoryId  String?
+  category    Category?      @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  balances    StockBalance[]
+  movements   StockMovement[]
+  batches     Batch[]
+  nfeItems    NFeItem[]
+  bomItems       BomItem[]       @relation("HarnessBom")
+  usedInBoms     BomItem[]       @relation("ComponentInBom")
+  assemblyOrders AssemblyOrder[]
+  assemblyItems  AssemblyOrderItem[] @relation("ComponentItems")
+}
+
+model Batch {
+  id                String         @id @default(cuid())
+  code              String
+  productId         String
+  product           Product        @relation(fields: [productId], references: [id])
+  expiryDate        DateTime?
+  manufacturingDate DateTime?
+  createdAt         DateTime       @default(now())
+  balances          StockBalance[]
+  movements         StockMovement[]
+
+  @@unique([code, productId])
+}
+
+model StockBalance {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  batchId     String?
+  batch       Batch?    @relation(fields: [batchId], references: [id])
+  quantity    Float     @default(0)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([productId, warehouseId, batchId])
+}
+
+model StockMovement {
+  id              String    @id @default(cuid())
+  type            String    // entry, exit, transfer, adjustment
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id])
+  warehouseId     String
+  warehouse       Warehouse @relation(fields: [warehouseId], references: [id])
+  toWarehouseId   String?
+  toWarehouse     Warehouse? @relation("FromWarehouse", fields: [toWarehouseId], references: [id])
+  batchId         String?
+  batch           Batch?    @relation(fields: [batchId], references: [id])
+  quantity        Float
+  unitCost        Float?
+  totalCost       Float?
+  referenceType   String?   // nfe, manual, adjustment
+  referenceId     String?
+  notes           String?
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  createdAt       DateTime  @default(now())
+}
+
+model NFe {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  number      String
+  series      String
+  issuerName  String
+  issuerCnpj  String
+  totalValue  Float
+  issueDate   DateTime
+  status      String    @default("pending") // pending, processed, error
+  xmlContent  String
+  createdAt   DateTime  @default(now())
+  items       NFeItem[]
+}
+
+model NFeItem {
+  id          String  @id @default(cuid())
+  nfeId       String
+  nfe         NFe     @relation(fields: [nfeId], references: [id])
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  description String
+  ean13       String?
+  quantity    Float
+  unitValue   Float
+  totalValue  Float
+  cfop        String?
+  cst         String?
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  productId   String
+  warehouseId String
+  type        String   // min_stock, expiry
+  message     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model BomItem {
+  id          String   @id @default(cuid())
+  harnessId   String
+  harness     Product  @relation("HarnessBom", fields: [harnessId], references: [id])
+  componentId String
+  component   Product  @relation("ComponentInBom", fields: [componentId], references: [id])
+  quantity    Float
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@unique([harnessId, componentId])
+}
+
+model AssemblyOrder {
+  id             String              @id @default(cuid())
+  code           String              @unique
+  harnessId      String
+  harness        Product             @relation(fields: [harnessId], references: [id])
+  warehouseId    String
+  quantity       Float
+  status         String              @default("pending") // pending, completed, cancelled
+  notes          String?
+  userId         String
+  user           User                @relation(fields: [userId], references: [id])
+  createdAt      DateTime            @default(now())
+  completedAt    DateTime?
+  items          AssemblyOrderItem[]
+}
+
+model AssemblyOrderItem {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             AssemblyOrder @relation(fields: [orderId], references: [id])
+  componentId       String
+  component         Product       @relation("ComponentItems", fields: [componentId], references: [id])
+  requiredQty       Float
+  consumedQty       Float         @default(0)
+  sourceWarehouseId String?
+}
