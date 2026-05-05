@@ -166,44 +166,77 @@ router.get('/kpis', authenticate, async (req: AuthRequest, res: Response): Promi
     const balanceWhere: Record<string, unknown> = {};
     if (warehouseId) balanceWhere.warehouseId = warehouseId as string;
 
+    const movWhere: Record<string, unknown> = { createdAt: { gte: startOfMonth } };
+    if (warehouseId) movWhere.warehouseId = warehouseId as string;
+
     const [
       totalProducts,
       balances,
-      movementsThisMonth,
-      pendingNFes,
+      monthlyMovements,
+      pendingNFe,
+      movementsByTypeRaw,
     ] = await Promise.all([
       prisma.product.count({ where: { active: true } }),
       prisma.stockBalance.findMany({
         where: balanceWhere,
-        include: { product: { select: { cost: true, minStock: true } } },
+        include: { product: { select: { id: true, sku: true, name: true, cost: true, minStock: true } } },
       }),
-      prisma.stockMovement.count({ where: { createdAt: { gte: startOfMonth }, ...(warehouseId ? { warehouseId: warehouseId as string } : {}) } }),
+      prisma.stockMovement.count({ where: movWhere }),
       prisma.nFe.count({ where: { status: 'pending' } }),
+      prisma.stockMovement.groupBy({
+        by: ['type'],
+        where: movWhere,
+        _count: { id: true },
+      }),
     ]);
 
-    const totalValue = balances.reduce((sum, b) => sum + b.quantity * b.product.cost, 0);
+    const totalStockValue = balances.reduce((sum, b) => sum + b.quantity * b.product.cost, 0);
 
-    // Group by product+warehouse to find low stock
+    // Low-stock: group by product across warehouses
     const stockByProduct = new Map<string, { quantity: number; minStock: number }>();
     for (const b of balances) {
-      const key = `${b.productId}-${b.warehouseId}`;
-      const existing = stockByProduct.get(key);
+      const existing = stockByProduct.get(b.productId);
       if (existing) {
         existing.quantity += b.quantity;
       } else {
-        stockByProduct.set(key, { quantity: b.quantity, minStock: b.product.minStock });
+        stockByProduct.set(b.productId, { quantity: b.quantity, minStock: b.product.minStock });
       }
     }
-    const lowStockCount = Array.from(stockByProduct.values()).filter((s) => s.quantity <= s.minStock).length;
+    const lowStockProducts = Array.from(stockByProduct.values()).filter((s) => s.quantity <= s.minStock && s.minStock > 0).length;
+
+    const movementsByType = movementsByTypeRaw.map((m) => ({ type: m.type, count: m._count.id }));
+
+    // Top 10 products by stock value
+    const productValueMap = new Map<string, { id: string; name: string; sku: string; totalStock: number; stockValue: number }>();
+    for (const b of balances) {
+      const existing = productValueMap.get(b.productId);
+      if (existing) {
+        existing.totalStock += b.quantity;
+        existing.stockValue += b.quantity * b.product.cost;
+      } else {
+        productValueMap.set(b.productId, {
+          id: b.product.id,
+          name: b.product.name,
+          sku: b.product.sku,
+          totalStock: b.quantity,
+          stockValue: b.quantity * b.product.cost,
+        });
+      }
+    }
+    const topProducts = Array.from(productValueMap.values())
+      .sort((a, b) => b.stockValue - a.stockValue)
+      .slice(0, 10);
 
     res.json({
       success: true,
       data: {
         totalProducts,
-        totalStockValue: totalValue,
-        lowStockCount,
-        movementsThisMonth,
-        pendingNFes,
+        totalStockValue,
+        lowStockProducts,
+        monthlyMovements,
+        pendingNFe,
+        movementsByType,
+        topProducts,
       },
     });
   } catch {
