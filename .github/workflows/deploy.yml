@@ -1,0 +1,65 @@
+name: Deploy para Firebase
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # ── Frontend ────────────────────────────────────────────────────
+      - name: Instalar dependências do frontend
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build do frontend
+        run: npm run build
+        working-directory: frontend
+
+      # ── Backend ─────────────────────────────────────────────────────
+      - name: Instalar dependências do backend
+        run: npm ci
+        working-directory: backend
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Rodar migrações do banco
+        run: npx prisma migrate deploy
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Build do backend (TypeScript)
+        run: npm run build
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # ── Deploy Firebase ──────────────────────────────────────────────
+      - name: Deploy para Firebase Hosting + Functions
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+        env:
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
