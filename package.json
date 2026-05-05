@@ -1,0 +1,12 @@
+{
+  "name": "flowworkpro",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:frontend": "cd frontend && npm ci && npm run build",
+    "build:backend": "cd backend && npm ci && npx prisma generate && npm run build",
+    "build:all": "npm run build:frontend && npm run build:backend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev"
+  }
+}

@@ -1,4 +1,4 @@
-name: Deploy para Firebase
+name: Deploy para Netlify
 
 on:
   push:
@@ -16,50 +16,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
 
       # ── Frontend ────────────────────────────────────────────────────
-      - name: Instalar dependências do frontend
-        run: npm ci
-        working-directory: frontend
-
-      - name: Build do frontend
-        run: npm run build
-        working-directory: frontend
+      - name: Instalar e buildar frontend
+        run: cd frontend && npm ci && npm run build
 
       # ── Backend ─────────────────────────────────────────────────────
       - name: Instalar dependências do backend
-        run: npm ci
-        working-directory: backend
-
-      - name: Gerar Prisma Client
-        run: npx prisma generate
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: cd backend && npm ci
 
       - name: Rodar migrações do banco
-        run: npx prisma migrate deploy
-        working-directory: backend
+        run: cd backend && npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Build do backend (TypeScript)
-        run: npm run build
-        working-directory: backend
+      - name: Gerar Prisma Client e buildar backend
+        run: cd backend && npx prisma generate && npm run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      # ── Deploy Firebase ──────────────────────────────────────────────
-      - name: Deploy para Firebase Hosting + Functions
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      # ── Deploy Netlify ───────────────────────────────────────────────
+      - name: Deploy para Netlify
+        uses: netlify/actions/cli@master
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          args: deploy --dir=frontend/dist --functions=netlify/functions --prod
         env:
-          FIREBASE_CLI_EXPERIMENTS: webframeworks
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
