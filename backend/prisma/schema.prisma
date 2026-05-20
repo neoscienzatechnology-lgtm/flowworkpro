@@ -55,7 +55,7 @@ model Warehouse {
 model Product {
   id          String         @id @default(cuid())
   sku         String         @unique
-  internalCode String?       @unique
+  internalCode String?
   name        String
   description String?
   ean13       String?        @unique
