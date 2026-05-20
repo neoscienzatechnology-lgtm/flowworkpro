@@ -6,7 +6,7 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 const router = Router();
 
 // GET /api/users
-router.get('/', authenticate, authorize('admin', 'manager'), async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/', authenticate, authorize('admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -29,7 +29,7 @@ router.get('/', authenticate, authorize('admin', 'manager'), async (req: AuthReq
 });
 
 // GET /api/users/:id
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/:id', authenticate, authorize('admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },

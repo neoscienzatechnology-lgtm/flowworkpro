@@ -1,10 +1,40 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
+router.post('/harnesses', authenticate, authorize('admin', 'manager'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { sku, internalCode, name, description, unit, cost, price, categoryId, location } = req.body;
 
-// GET /api/bom/:harnessId — get full BOM for a harness
+    if (!name) {
+      res.status(400).json({ success: false, error: 'Nome do chicote e obrigatorio' });
+      return;
+    }
+
+    const harness = await prisma.product.create({
+      data: {
+        sku: sku || `CH-${Date.now()}`,
+        internalCode: internalCode || null,
+        name,
+        description: description || null,
+        unit: unit || 'UN',
+        cost: cost || 0,
+        price: price || 0,
+        categoryId: categoryId || null,
+        location: location || null,
+        type: 'harness',
+        active: true,
+      },
+    });
+
+    res.status(201).json({ success: true, data: harness });
+  } catch {
+    res.status(500).json({ success: false, error: 'Erro ao criar chicote para BOM' });
+  }
+});
+
+// GET /api/bom/:harnessId â€” get full BOM for a harness
 router.get('/:harnessId', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { harnessId } = req.params;
@@ -15,12 +45,12 @@ router.get('/:harnessId', authenticate, async (req: AuthRequest, res: Response):
     });
 
     if (!harness) {
-      res.status(404).json({ success: false, error: 'Produto não encontrado' });
+      res.status(404).json({ success: false, error: 'Produto nÃ£o encontrado' });
       return;
     }
 
     if (harness.type !== 'harness') {
-      res.status(400).json({ success: false, error: 'Produto não é um chicote' });
+      res.status(400).json({ success: false, error: 'Produto nÃ£o Ã© um chicote' });
       return;
     }
 
@@ -47,31 +77,31 @@ router.get('/:harnessId', authenticate, async (req: AuthRequest, res: Response):
   }
 });
 
-// POST /api/bom/:harnessId/items — add/update item
+// POST /api/bom/:harnessId/items â€” add/update item
 router.post('/:harnessId/items', authenticate, authorize('admin', 'manager'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { harnessId } = req.params;
     const { componentId, quantity, notes } = req.body;
 
     if (!componentId || !quantity || quantity <= 0) {
-      res.status(400).json({ success: false, error: 'componentId e quantity (>0) são obrigatórios' });
+      res.status(400).json({ success: false, error: 'componentId e quantity (>0) sÃ£o obrigatÃ³rios' });
       return;
     }
 
     const harness = await prisma.product.findUnique({ where: { id: harnessId } });
     if (!harness || harness.type !== 'harness') {
-      res.status(404).json({ success: false, error: 'Chicote não encontrado' });
+      res.status(404).json({ success: false, error: 'Chicote nÃ£o encontrado' });
       return;
     }
 
     if (harnessId === componentId) {
-      res.status(400).json({ success: false, error: 'Um chicote não pode referenciar a si mesmo' });
+      res.status(400).json({ success: false, error: 'Um chicote nÃ£o pode referenciar a si mesmo' });
       return;
     }
 
     const component = await prisma.product.findUnique({ where: { id: componentId } });
     if (!component) {
-      res.status(404).json({ success: false, error: 'Componente não encontrado' });
+      res.status(404).json({ success: false, error: 'Componente nÃ£o encontrado' });
       return;
     }
 
@@ -90,7 +120,7 @@ router.post('/:harnessId/items', authenticate, authorize('admin', 'manager'), as
   }
 });
 
-// PUT /api/bom/:harnessId/items/:itemId — update quantity/notes
+// PUT /api/bom/:harnessId/items/:itemId â€” update quantity/notes
 router.put('/:harnessId/items/:itemId', authenticate, authorize('admin', 'manager'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { harnessId, itemId } = req.params;
@@ -101,7 +131,7 @@ router.put('/:harnessId/items/:itemId', authenticate, authorize('admin', 'manage
     });
 
     if (!existing) {
-      res.status(404).json({ success: false, error: 'Item de BOM não encontrado' });
+      res.status(404).json({ success: false, error: 'Item de BOM nÃ£o encontrado' });
       return;
     }
 
@@ -122,7 +152,7 @@ router.put('/:harnessId/items/:itemId', authenticate, authorize('admin', 'manage
   }
 });
 
-// DELETE /api/bom/:harnessId/items/:itemId — remove item
+// DELETE /api/bom/:harnessId/items/:itemId â€” remove item
 router.delete('/:harnessId/items/:itemId', authenticate, authorize('admin', 'manager'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { harnessId, itemId } = req.params;
@@ -132,7 +162,7 @@ router.delete('/:harnessId/items/:itemId', authenticate, authorize('admin', 'man
     });
 
     if (!existing) {
-      res.status(404).json({ success: false, error: 'Item de BOM não encontrado' });
+      res.status(404).json({ success: false, error: 'Item de BOM nÃ£o encontrado' });
       return;
     }
 
@@ -144,7 +174,7 @@ router.delete('/:harnessId/items/:itemId', authenticate, authorize('admin', 'man
   }
 });
 
-// GET /api/bom/:harnessId/feasibility?quantity=1&warehouseId= — check stock feasibility
+// GET /api/bom/:harnessId/feasibility?quantity=1&warehouseId= â€” check stock feasibility
 router.get('/:harnessId/feasibility', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { harnessId } = req.params;
@@ -153,7 +183,7 @@ router.get('/:harnessId/feasibility', authenticate, async (req: AuthRequest, res
 
     const harness = await prisma.product.findUnique({ where: { id: harnessId } });
     if (!harness || harness.type !== 'harness') {
-      res.status(404).json({ success: false, error: 'Chicote não encontrado' });
+      res.status(404).json({ success: false, error: 'Chicote nÃ£o encontrado' });
       return;
     }
 
@@ -198,3 +228,4 @@ router.get('/:harnessId/feasibility', authenticate, async (req: AuthRequest, res
 });
 
 export default router;
+

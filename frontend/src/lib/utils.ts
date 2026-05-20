@@ -17,3 +17,11 @@ export function formatDateTime(dateStr: string | Date | null | undefined): strin
 export function formatNumber(value: number): string {
   return value.toLocaleString('pt-BR');
 }
+
+export function formatQuantity(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '0';
+  const numeric = Number(value);
+  return Number.isInteger(numeric)
+    ? numeric.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+    : numeric.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+}

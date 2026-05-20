@@ -1,12 +1,12 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, Tag, Search } from 'lucide-react';
+import { Box, FileImage, FileText, Plus, Pencil, Trash2, Tag, Search } from 'lucide-react';
 import api from '../lib/api';
 import { useToast } from '../lib/toast';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatQuantity } from '../lib/utils';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Badge from '../components/Badge';
@@ -21,12 +21,18 @@ interface Category {
 interface Product {
   id: string;
   sku: string;
+  internalCode?: string;
   name: string;
   description?: string;
   categoryId?: string;
   category?: Category;
   ean13?: string;
   unit: string;
+  location?: string;
+  realImageUrl?: string;
+  cadFileUrl?: string;
+  model3dUrl?: string;
+  stepFileUrl?: string;
   minStock: number;
   cost: number;
   price: number;
@@ -37,11 +43,17 @@ interface Product {
 
 interface ProductForm {
   sku: string;
+  internalCode?: string;
   name: string;
   description?: string;
   categoryId?: string;
   ean13?: string;
   unit: string;
+  location?: string;
+  realImageUrl?: string;
+  cadFileUrl?: string;
+  model3dUrl?: string;
+  stepFileUrl?: string;
   minStock: number;
   cost: number;
   price: number;
@@ -50,15 +62,21 @@ interface ProductForm {
 }
 
 const productSchema = z.object({
-  sku: z.string().min(1, 'SKU obrigatório'),
-  name: z.string().min(1, 'Nome obrigatório'),
+  sku: z.string().min(1, 'SKU obrigatÃ³rio'),
+  internalCode: z.string().optional(),
+  name: z.string().min(1, 'Nome obrigatÃ³rio'),
   description: z.string().optional(),
   categoryId: z.string().optional(),
   ean13: z.string().optional(),
-  unit: z.string().min(1, 'Unidade obrigatória'),
-  minStock: z.coerce.number().min(0, 'Mínimo 0'),
-  cost: z.coerce.number().min(0, 'Mínimo 0'),
-  price: z.coerce.number().min(0, 'Mínimo 0'),
+  unit: z.string().min(1, 'Unidade obrigatÃ³ria'),
+  location: z.string().optional(),
+  realImageUrl: z.string().optional(),
+  cadFileUrl: z.string().optional(),
+  model3dUrl: z.string().optional(),
+  stepFileUrl: z.string().optional(),
+  minStock: z.coerce.number().min(0, 'MÃ­nimo 0'),
+  cost: z.coerce.number().min(0, 'MÃ­nimo 0'),
+  price: z.coerce.number().min(0, 'MÃ­nimo 0'),
   active: z.boolean(),
   type: z.enum(['component', 'harness']),
 });
@@ -76,7 +94,7 @@ function LabelModal({ product, onClose }: { product: Product; onClose: () => voi
 
             {product.ean13 && (
               <div className="my-4">
-                <p className="text-xs text-gray-400 mb-2">Código de Barras EAN-13</p>
+                <p className="text-xs text-gray-400 mb-2">CÃ³digo de Barras EAN-13</p>
                 <div className="font-mono text-xl font-bold tracking-widest bg-gray-50 p-3 rounded-lg border border-gray-200">
                   {product.ean13}
                 </div>
@@ -103,7 +121,7 @@ function LabelModal({ product, onClose }: { product: Product; onClose: () => voi
                 <span className="font-medium">{product.unit}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Preço:</span>
+                <span className="text-gray-500">PreÃ§o:</span>
                 <span className="font-medium">{formatCurrency(product.price)}</span>
               </div>
               {product.category && (
@@ -158,25 +176,36 @@ function ProductModal({
   const { register, handleSubmit, formState: { errors } } = useForm<ProductForm>({
     resolver: zodResolver(productSchema) as Resolver<ProductForm>,
     defaultValues: product
-      ? {
+        ? {
           sku: product.sku,
+          internalCode: product.internalCode ?? '',
           name: product.name,
           description: product.description ?? '',
           categoryId: product.categoryId ?? '',
           ean13: product.ean13 ?? '',
           unit: product.unit,
+          location: product.location ?? '',
+          realImageUrl: product.realImageUrl ?? '',
+          cadFileUrl: product.cadFileUrl ?? '',
+          model3dUrl: product.model3dUrl ?? '',
+          stepFileUrl: product.stepFileUrl ?? '',
           minStock: product.minStock,
           cost: product.cost,
           price: product.price,
           active: product.active,
           type: product.type ?? 'component',
         }
-      : { unit: 'UN', minStock: 0, cost: 0, price: 0, active: true, type: 'component' },
+      : { sku: '', internalCode: '', name: '', unit: 'UN', location: '', realImageUrl: '', cadFileUrl: '', model3dUrl: '', stepFileUrl: '', minStock: 0, cost: 0, price: 0, active: true, type: 'component' },
   });
 
   const mutation = useMutation({
     mutationFn: async (data: ProductForm) => {
-      const payload = { ...data, categoryId: data.categoryId || undefined, ean13: data.ean13 || undefined };
+      const payload = {
+        ...data,
+        categoryId: data.categoryId || undefined,
+        ean13: data.ean13 || undefined,
+        internalCode: data.internalCode || undefined,
+      };
       if (product) {
         return api.put(`/products/${product.id}`, payload);
       }
@@ -206,11 +235,30 @@ function ProductModal({
             {errors.sku && <p className="mt-1 text-xs text-red-600">{errors.sku.message}</p>}
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Código Interno</label>
+            <input
+              {...register('internalCode')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ex.: INT-001"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">EAN-13</label>
             <input
               {...register('ean13')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0000000000000"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Localização</label>
+            <input
+              {...register('location')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Rua, prateleira, gaveta..."
             />
           </div>
         </div>
@@ -225,12 +273,35 @@ function ProductModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">DescriÃ§Ã£o</label>
           <textarea
             {...register('description')}
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-700">Arquivos técnicos e imagens</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Imagem real do produto</label>
+              <input {...register('realImageUrl')} placeholder="URL da imagem" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Diagrama CAD</label>
+              <input {...register('cadFileUrl')} placeholder="URL do arquivo CAD/desenho" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Preview 3D (GLB/GLTF)</label>
+              <input {...register('model3dUrl')} placeholder="URL do modelo 3D para visualização" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Arquivo STEP/STP</label>
+              <input {...register('stepFileUrl')} placeholder="URL do arquivo técnico .step/.stp" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">Arquivos STEP ficam disponíveis para download; preview 3D no navegador usa GLB/GLTF.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -260,7 +331,7 @@ function ProductModal({
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Estoque Mínimo</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Estoque MÃ­nimo</label>
             <input
               {...register('minStock')}
               type="number"
@@ -282,7 +353,7 @@ function ProductModal({
             {errors.cost && <p className="mt-1 text-xs text-red-600">{errors.cost.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">PreÃ§o (R$)</label>
             <input
               {...register('price')}
               type="number"
@@ -355,6 +426,7 @@ export default function ProductsPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const canWrite = ['admin', 'manager'].includes(user?.role ?? '');
+  const canDelete = user?.role === 'admin';
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -392,7 +464,7 @@ export default function ProductsPage() {
     mutationFn: (id: string) => api.delete(`/products/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['products'] });
-      success('Produto excluído com sucesso!');
+      success('Produto excluÃ­do com sucesso!');
       setDeleteProduct(null);
     },
     onError: () => error('Erro ao excluir produto'),
@@ -413,7 +485,7 @@ export default function ProductsPage() {
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Buscar por nome, SKU ou EAN..."
+              placeholder="Buscar por nome, SKU, código interno ou EAN..."
               className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -454,7 +526,7 @@ export default function ProductsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {['SKU', 'Tipo', 'Nome', 'Categoria', 'EAN-13', 'Unid.', 'Estoque', 'Mín.', 'Custo', 'Preço', 'Status', 'Ações'].map((h) => (
+                {['SKU', 'Cód. Interno', 'Tipo', 'Nome', 'Localização', 'Categoria', 'EAN-13', 'Arquivos', 'Unid.', 'Estoque', 'Mín.', 'Custo', 'Preço', 'Status', 'Ações'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -463,7 +535,7 @@ export default function ProductsPage() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 12 }).map((_, j) => (
+                    {Array.from({ length: 15 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-gray-200 rounded animate-pulse" />
                       </td>
@@ -472,7 +544,7 @@ export default function ProductsPage() {
                 ))
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={15} className="px-4 py-12 text-center text-gray-400 text-sm">
                     Nenhum produto encontrado
                   </td>
                 </tr>
@@ -480,6 +552,7 @@ export default function ProductsPage() {
                 products.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-mono text-gray-600">{product.sku}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-gray-600">{product.internalCode || '-'}</td>
                     <td className="px-4 py-3">
                       {product.type === 'harness' ? (
                         <Badge variant="green">Chicote</Badge>
@@ -488,15 +561,24 @@ export default function ProductsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 max-w-[200px] truncate">{product.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 max-w-[160px] whitespace-normal break-words">{product.location || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{product.category?.name ?? '-'}</td>
                     <td className="px-4 py-3 text-sm font-mono text-gray-500">{product.ean13 ?? '-'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        {product.realImageUrl && <a href={product.realImageUrl} target="_blank" rel="noreferrer" title="Imagem real" className="p-1 text-blue-600 hover:bg-blue-50 rounded"><FileImage className="w-4 h-4" /></a>}
+                        {product.cadFileUrl && <a href={product.cadFileUrl} target="_blank" rel="noreferrer" title="Diagrama CAD" className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"><FileText className="w-4 h-4" /></a>}
+                        {(product.model3dUrl || product.stepFileUrl) && <a href={product.model3dUrl || product.stepFileUrl} target="_blank" rel="noreferrer" title={product.model3dUrl ? 'Modelo 3D' : 'Arquivo STEP'} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Box className="w-4 h-4" /></a>}
+                        {!product.realImageUrl && !product.cadFileUrl && !product.model3dUrl && !product.stepFileUrl && <span className="text-sm text-gray-400">-</span>}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{product.unit}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                       <span className={`${(product.totalStock ?? 0) <= product.minStock ? 'text-yellow-600 font-bold' : ''}`}>
-                        {product.totalStock ?? 0}
+                        {formatQuantity(product.totalStock)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{product.minStock}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{formatQuantity(product.minStock)}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(product.cost)}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(product.price)}</td>
                     <td className="px-4 py-3">
@@ -506,6 +588,8 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        {canWrite && (
+                          <>
                         <button
                           onClick={() => setEditProduct(product)}
                           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -520,13 +604,18 @@ export default function ProductsPage() {
                         >
                           <Tag className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => setDeleteProduct(product)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => setDeleteProduct(product)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                          </>
+                        )}
+                        {!canWrite && <span className="text-xs text-gray-400">Somente leitura</span>}
                       </div>
                     </td>
                   </tr>
@@ -564,10 +653,11 @@ export default function ProductsPage() {
         onClose={() => setDeleteProduct(null)}
         onConfirm={() => deleteProduct && deleteMutation.mutate(deleteProduct.id)}
         title="Excluir Produto"
-        message={`Tem certeza que deseja excluir o produto "${deleteProduct?.name}"? Esta ação não pode ser desfeita.`}
+        message={`Tem certeza que deseja excluir o produto "${deleteProduct?.name}"? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`}
         confirmLabel="Excluir"
         isLoading={deleteMutation.isPending}
       />
     </div>
   );
 }
+

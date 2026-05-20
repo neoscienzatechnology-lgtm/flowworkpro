@@ -33,6 +33,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RoleRoute({ roles, children }: { roles: string[]; children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!roles.includes(user.role)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner />;
@@ -50,15 +58,15 @@ function AppRoutes() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<ProductsPage />} />
-        <Route path="categories" element={<CategoriesPage />} />
-        <Route path="warehouses" element={<WarehousesPage />} />
-        <Route path="movements" element={<MovementsPage />} />
+        <Route path="categories" element={<RoleRoute roles={['admin', 'manager']}><CategoriesPage /></RoleRoute>} />
+        <Route path="warehouses" element={<RoleRoute roles={['admin', 'manager', 'operator']}><WarehousesPage /></RoleRoute>} />
+        <Route path="movements" element={<RoleRoute roles={['admin', 'manager', 'operator']}><MovementsPage /></RoleRoute>} />
         <Route path="bom" element={<BomPage />} />
-        <Route path="assembly" element={<AssemblyPage />} />
-        <Route path="nfe" element={<NfePage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="alerts" element={<AlertsPage />} />
+        <Route path="assembly" element={<RoleRoute roles={['admin', 'manager', 'operator']}><AssemblyPage /></RoleRoute>} />
+        <Route path="nfe" element={<RoleRoute roles={['admin', 'manager', 'operator']}><NfePage /></RoleRoute>} />
+        <Route path="reports" element={<RoleRoute roles={['admin', 'manager', 'viewer']}><ReportsPage /></RoleRoute>} />
+        <Route path="users" element={<RoleRoute roles={['admin']}><UsersPage /></RoleRoute>} />
+        <Route path="alerts" element={<RoleRoute roles={['admin', 'manager', 'operator']}><AlertsPage /></RoleRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

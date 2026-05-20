@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -22,30 +22,30 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/products', icon: Package, label: 'Produtos' },
-  { to: '/categories', icon: Tag, label: 'Categorias' },
-  { to: '/warehouses', icon: Warehouse, label: 'Depósitos' },
-  { to: '/movements', icon: ArrowLeftRight, label: 'Movimentações' },
-  { to: '/bom', icon: ClipboardList, label: 'BOM' },
-  { to: '/assembly', icon: Wrench, label: 'Montagem' },
-  { to: '/nfe', icon: FileText, label: 'NF-e' },
-  { to: '/reports', icon: BarChart3, label: 'Relatórios' },
-  { to: '/alerts', icon: Bell, label: 'Alertas' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true, roles: ['admin', 'manager', 'operator', 'viewer'] },
+  { to: '/products', icon: Package, label: 'Produtos', roles: ['admin', 'manager', 'operator', 'viewer'] },
+  { to: '/categories', icon: Tag, label: 'Categorias', roles: ['admin', 'manager'] },
+  { to: '/warehouses', icon: Warehouse, label: 'Depositos', roles: ['admin', 'manager', 'operator'] },
+  { to: '/movements', icon: ArrowLeftRight, label: 'Movimentacoes', roles: ['admin', 'manager', 'operator'] },
+  { to: '/bom', icon: ClipboardList, label: 'BOM', roles: ['admin', 'manager', 'operator', 'viewer'] },
+  { to: '/assembly', icon: Wrench, label: 'Montagem', roles: ['admin', 'manager', 'operator'] },
+  { to: '/nfe', icon: FileText, label: 'NF-e', roles: ['admin', 'manager', 'operator'] },
+  { to: '/reports', icon: BarChart3, label: 'Relatorios', roles: ['admin', 'manager', 'viewer'] },
+  { to: '/alerts', icon: Bell, label: 'Alertas', roles: ['admin', 'manager', 'operator'] },
 ];
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/products': 'Produtos',
   '/categories': 'Categorias',
-  '/warehouses': 'Depósitos',
-  '/movements': 'Movimentações',
-  '/bom': 'BOM — Lista de Materiais',
+  '/warehouses': 'DepÃ³sitos',
+  '/movements': 'MovimentaÃ§Ãµes',
+  '/bom': 'BOM â€” Lista de Materiais',
   '/assembly': 'Ordens de Montagem',
   '/nfe': 'NF-e',
-  '/reports': 'Relatórios',
+  '/reports': 'RelatÃ³rios',
   '/alerts': 'Alertas',
-  '/users': 'Usuários',
+  '/users': 'UsuÃ¡rios',
 };
 
 function roleLabel(role: string) {
@@ -99,7 +99,9 @@ export default function Layout() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map(({ to, icon: Icon, label, end }) => (
+        {navItems
+          .filter((item) => item.roles.includes(user?.role || 'viewer'))
+          .map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -143,7 +145,7 @@ export default function Layout() {
             {({ isActive }) => (
               <>
                 <Users className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-blue-300 group-hover:text-white'}`} />
-                <span className="flex-1">Usuários</span>
+                <span className="flex-1">UsuÃ¡rios</span>
                 {isActive && <ChevronRight className="w-4 h-4 text-white/60" />}
               </>
             )}
@@ -238,3 +240,4 @@ export default function Layout() {
     </div>
   );
 }
+

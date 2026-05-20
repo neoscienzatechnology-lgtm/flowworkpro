@@ -55,10 +55,16 @@ model Warehouse {
 model Product {
   id          String         @id @default(cuid())
   sku         String         @unique
+  internalCode String?       @unique
   name        String
   description String?
   ean13       String?        @unique
   unit        String         @default("UN")
+  location    String?
+  realImageUrl String?
+  cadFileUrl   String?
+  model3dUrl   String?
+  stepFileUrl  String?
   minStock    Float          @default(0)
   cost        Float          @default(0)
   price       Float          @default(0)
@@ -120,6 +126,8 @@ model StockMovement {
   quantity        Float
   unitCost        Float?
   totalCost       Float?
+  previousCost    Float?
+  newCost         Float?
   referenceType   String?   // nfe, manual, adjustment
   referenceId     String?
   notes           String?

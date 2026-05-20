@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { CheckCircle } from 'lucide-react';
 import api from '../lib/api';
 import { useToast } from '../lib/toast';
-import { formatDate } from '../lib/utils';
+import { formatDate, formatQuantity } from '../lib/utils';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
 
@@ -14,6 +14,10 @@ interface Product {
   id: string;
   name: string;
   sku: string;
+  internalCode?: string;
+  unit?: string;
+  cost?: number;
+  totalStock?: number;
 }
 
 interface Warehouse {
@@ -29,6 +33,8 @@ interface Movement {
   warehouse?: Warehouse;
   toWarehouse?: Warehouse;
   quantity: number;
+  previousCost?: number;
+  newCost?: number;
   reference?: string;
   notes?: string;
   createdAt: string;
@@ -37,15 +43,15 @@ interface Movement {
 
 const movementTypes = [
   { value: 'entry', label: 'Entrada', color: 'success' as const },
-  { value: 'exit', label: 'Saída', color: 'error' as const },
-  { value: 'transfer', label: 'Transferência', color: 'info' as const },
+  { value: 'exit', label: 'SaÃ­da', color: 'error' as const },
+  { value: 'transfer', label: 'TransferÃªncia', color: 'info' as const },
   { value: 'adjustment', label: 'Ajuste', color: 'warning' as const },
 ];
 
 const movementTypeLabel: Record<string, string> = {
   entry: 'Entrada',
-  exit: 'Saída',
-  transfer: 'Transferência',
+  exit: 'SaÃ­da',
+  transfer: 'TransferÃªncia',
   adjustment: 'Ajuste',
 };
 
@@ -58,32 +64,33 @@ const movementTypeBadge: Record<string, 'success' | 'error' | 'info' | 'warning'
 
 // Form schemas
 const entrySchema = z.object({
-  productId: z.string().min(1, 'Produto obrigatório'),
-  warehouseId: z.string().min(1, 'Depósito obrigatório'),
+  productId: z.string().min(1, 'Produto obrigatÃ³rio'),
+  warehouseId: z.string().min(1, 'DepÃ³sito obrigatÃ³rio'),
   quantity: z.coerce.number().positive('Quantidade deve ser positiva'),
   unitCost: z.coerce.number().min(0).optional(),
   notes: z.string().optional(),
 });
 
 const exitSchema = z.object({
-  productId: z.string().min(1, 'Produto obrigatório'),
-  warehouseId: z.string().min(1, 'Depósito obrigatório'),
+  productId: z.string().min(1, 'Produto obrigatÃ³rio'),
+  warehouseId: z.string().min(1, 'DepÃ³sito obrigatÃ³rio'),
   quantity: z.coerce.number().positive('Quantidade deve ser positiva'),
   notes: z.string().optional(),
 });
 
 const transferSchema = z.object({
-  productId: z.string().min(1, 'Produto obrigatório'),
-  fromWarehouseId: z.string().min(1, 'Depósito origem obrigatório'),
-  toWarehouseId: z.string().min(1, 'Depósito destino obrigatório'),
+  productId: z.string().min(1, 'Produto obrigatÃ³rio'),
+  fromWarehouseId: z.string().min(1, 'DepÃ³sito origem obrigatÃ³rio'),
+  toWarehouseId: z.string().min(1, 'DepÃ³sito destino obrigatÃ³rio'),
   quantity: z.coerce.number().positive('Quantidade deve ser positiva'),
   notes: z.string().optional(),
 });
 
 const adjustmentSchema = z.object({
-  productId: z.string().min(1, 'Produto obrigatório'),
-  warehouseId: z.string().min(1, 'Depósito obrigatório'),
+  productId: z.string().min(1, 'Produto obrigatÃ³rio'),
+  warehouseId: z.string().min(1, 'DepÃ³sito obrigatÃ³rio'),
   quantity: z.coerce.number(),
+  newCost: z.coerce.number().min(0).optional(),
   notes: z.string().optional(),
 });
 
@@ -97,6 +104,50 @@ function SelectField({ label, required, children, error }: { label: string; requ
   );
 }
 
+
+function ProductSelectField({
+  label,
+  products,
+  register,
+  fieldName,
+  error,
+}: {
+  label: string;
+  products: Product[];
+  register: (name: string) => Record<string, unknown>;
+  fieldName: string;
+  error?: string;
+}) {
+  const [search, setSearch] = useState('');
+  const term = search.trim().toLowerCase();
+  const filteredProducts = term
+    ? products.filter((p) =>
+        [p.name, p.sku, p.internalCode].some((value) => value?.toLowerCase().includes(term))
+      )
+    : products;
+
+  return (
+    <SelectField label={label} required error={error}>
+      <div className="space-y-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Pesquisar por nome, SKU ou codigo interno..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <select {...register(fieldName)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Selecionar produto...</option>
+          {filteredProducts.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.internalCode ? `${p.internalCode} | ` : ''}{p.sku} - {p.name}
+              {p.totalStock !== undefined ? ` | Estoque: ${formatQuantity(p.totalStock)}` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+    </SelectField>
+  );
+}
 function NewMovementTab({ products, warehouses }: { products: Product[]; warehouses: Warehouse[] }) {
   const { success, error } = useToast();
   const qc = useQueryClient();
@@ -106,7 +157,7 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
   const entryForm = useForm({ resolver: zodResolver(entrySchema), defaultValues: { productId: '', warehouseId: '', quantity: 1, unitCost: 0, notes: '' } });
   const exitForm = useForm({ resolver: zodResolver(exitSchema), defaultValues: { productId: '', warehouseId: '', quantity: 1, notes: '' } });
   const transferForm = useForm({ resolver: zodResolver(transferSchema), defaultValues: { productId: '', fromWarehouseId: '', toWarehouseId: '', quantity: 1, notes: '' } });
-  const adjustForm = useForm({ resolver: zodResolver(adjustmentSchema), defaultValues: { productId: '', warehouseId: '', quantity: 0, notes: '' } });
+  const adjustForm = useForm({ resolver: zodResolver(adjustmentSchema), defaultValues: { productId: '', warehouseId: '', quantity: 0, newCost: undefined, notes: '' } });
 
   const mutation = useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
@@ -115,11 +166,11 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['movements'] });
       qc.invalidateQueries({ queryKey: ['kpis'] });
-      success('Movimentação registrada com sucesso!');
+      success('MovimentaÃ§Ã£o registrada com sucesso!');
       setDone(true);
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Erro ao registrar movimentação';
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Erro ao registrar movimentaÃ§Ã£o';
       error(msg);
     },
   });
@@ -132,9 +183,9 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <p className="text-lg font-semibold text-gray-900">Movimentação Registrada!</p>
+        <p className="text-lg font-semibold text-gray-900">MovimentaÃ§Ã£o Registrada!</p>
         <button onClick={() => { setDone(false); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-          Nova Movimentação
+          Nova MovimentaÃ§Ã£o
         </button>
       </div>
     );
@@ -144,7 +195,7 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
     <div className="max-w-lg mx-auto space-y-6">
       {/* Type selector */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Movimentação</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de MovimentaÃ§Ã£o</label>
         <div className="grid grid-cols-4 gap-2">
           {movementTypes.map((t) => (
             <button
@@ -166,15 +217,10 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
       {/* Entry form */}
       {type === 'entry' && (
         <form onSubmit={entryForm.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
-          <SelectField label="Produto" required error={entryForm.formState.errors.productId?.message}>
-            <select {...entryForm.register('productId')} className={inputClass}>
-              <option value="">Selecionar produto...</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
-            </select>
-          </SelectField>
-          <SelectField label="Depósito Destino" required error={entryForm.formState.errors.warehouseId?.message}>
+          <ProductSelectField label="Produto" products={products} register={entryForm.register as never} fieldName="productId" error={entryForm.formState.errors.productId?.message} />
+          <SelectField label="DepÃ³sito Destino" required error={entryForm.formState.errors.warehouseId?.message}>
             <select {...entryForm.register('warehouseId')} className={inputClass}>
-              <option value="">Selecionar depósito...</option>
+              <option value="">Selecionar depÃ³sito...</option>
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
             </select>
           </SelectField>
@@ -182,11 +228,11 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
             <SelectField label="Quantidade" required error={entryForm.formState.errors.quantity?.message}>
               <input {...entryForm.register('quantity')} type="number" min="0.001" step="0.001" className={inputClass} />
             </SelectField>
-            <SelectField label="Custo Unitário (R$)">
+            <SelectField label="Custo UnitÃ¡rio (R$)">
               <input {...entryForm.register('unitCost')} type="number" min="0" step="0.01" className={inputClass} />
             </SelectField>
           </div>
-          <SelectField label="Observações">
+          <SelectField label="ObservaÃ§Ãµes">
             <textarea {...entryForm.register('notes')} rows={2} className={`${inputClass} resize-none`} />
           </SelectField>
           <button type="submit" disabled={mutation.isPending} className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60">
@@ -199,27 +245,22 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
       {/* Exit form */}
       {type === 'exit' && (
         <form onSubmit={exitForm.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
-          <SelectField label="Produto" required error={exitForm.formState.errors.productId?.message}>
-            <select {...exitForm.register('productId')} className={inputClass}>
-              <option value="">Selecionar produto...</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
-            </select>
-          </SelectField>
-          <SelectField label="Depósito Origem" required error={exitForm.formState.errors.warehouseId?.message}>
+          <ProductSelectField label="Produto" products={products} register={exitForm.register as never} fieldName="productId" error={exitForm.formState.errors.productId?.message} />
+          <SelectField label="DepÃ³sito Origem" required error={exitForm.formState.errors.warehouseId?.message}>
             <select {...exitForm.register('warehouseId')} className={inputClass}>
-              <option value="">Selecionar depósito...</option>
+              <option value="">Selecionar depÃ³sito...</option>
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
             </select>
           </SelectField>
           <SelectField label="Quantidade" required error={exitForm.formState.errors.quantity?.message}>
             <input {...exitForm.register('quantity')} type="number" min="0.001" step="0.001" className={inputClass} />
           </SelectField>
-          <SelectField label="Observações">
+          <SelectField label="ObservaÃ§Ãµes">
             <textarea {...exitForm.register('notes')} rows={2} className={`${inputClass} resize-none`} />
           </SelectField>
           <button type="submit" disabled={mutation.isPending} className="w-full py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60">
             {mutation.isPending && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-            Registrar Saída
+            Registrar SaÃ­da
           </button>
         </form>
       )}
@@ -227,33 +268,28 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
       {/* Transfer form */}
       {type === 'transfer' && (
         <form onSubmit={transferForm.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
-          <SelectField label="Produto" required error={transferForm.formState.errors.productId?.message}>
-            <select {...transferForm.register('productId')} className={inputClass}>
-              <option value="">Selecionar produto...</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
-            </select>
-          </SelectField>
-          <SelectField label="Depósito Origem" required error={transferForm.formState.errors.fromWarehouseId?.message}>
+          <ProductSelectField label="Produto" products={products} register={transferForm.register as never} fieldName="productId" error={transferForm.formState.errors.productId?.message} />
+          <SelectField label="DepÃ³sito Origem" required error={transferForm.formState.errors.fromWarehouseId?.message}>
             <select {...transferForm.register('fromWarehouseId')} className={inputClass}>
-              <option value="">Selecionar depósito...</option>
+              <option value="">Selecionar depÃ³sito...</option>
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
             </select>
           </SelectField>
-          <SelectField label="Depósito Destino" required error={transferForm.formState.errors.toWarehouseId?.message}>
+          <SelectField label="DepÃ³sito Destino" required error={transferForm.formState.errors.toWarehouseId?.message}>
             <select {...transferForm.register('toWarehouseId')} className={inputClass}>
-              <option value="">Selecionar depósito...</option>
+              <option value="">Selecionar depÃ³sito...</option>
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
             </select>
           </SelectField>
           <SelectField label="Quantidade" required error={transferForm.formState.errors.quantity?.message}>
             <input {...transferForm.register('quantity')} type="number" min="0.001" step="0.001" className={inputClass} />
           </SelectField>
-          <SelectField label="Observações">
+          <SelectField label="ObservaÃ§Ãµes">
             <textarea {...transferForm.register('notes')} rows={2} className={`${inputClass} resize-none`} />
           </SelectField>
           <button type="submit" disabled={mutation.isPending} className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60">
             {mutation.isPending && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-            Registrar Transferência
+            Registrar TransferÃªncia
           </button>
         </form>
       )}
@@ -261,22 +297,20 @@ function NewMovementTab({ products, warehouses }: { products: Product[]; warehou
       {/* Adjustment form */}
       {type === 'adjustment' && (
         <form onSubmit={adjustForm.handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
-          <SelectField label="Produto" required error={adjustForm.formState.errors.productId?.message}>
-            <select {...adjustForm.register('productId')} className={inputClass}>
-              <option value="">Selecionar produto...</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
-            </select>
-          </SelectField>
-          <SelectField label="Depósito" required error={adjustForm.formState.errors.warehouseId?.message}>
+          <ProductSelectField label="Produto" products={products} register={adjustForm.register as never} fieldName="productId" error={adjustForm.formState.errors.productId?.message} />
+          <SelectField label="DepÃ³sito" required error={adjustForm.formState.errors.warehouseId?.message}>
             <select {...adjustForm.register('warehouseId')} className={inputClass}>
-              <option value="">Selecionar depósito...</option>
+              <option value="">Selecionar depÃ³sito...</option>
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
             </select>
           </SelectField>
           <SelectField label="Quantidade (pode ser negativa)" required error={adjustForm.formState.errors.quantity?.message}>
             <input {...adjustForm.register('quantity')} type="number" step="0.001" className={inputClass} />
           </SelectField>
-          <SelectField label="Observações">
+          <SelectField label="Novo custo unitário do produto (R$)">
+            <input {...adjustForm.register('newCost')} type="number" min="0" step="0.01" className={inputClass} placeholder="Deixe em branco para manter o custo atual" />
+          </SelectField>
+          <SelectField label="ObservaÃ§Ãµes">
             <textarea {...adjustForm.register('notes')} rows={2} className={`${inputClass} resize-none`} />
           </SelectField>
           <button type="submit" disabled={mutation.isPending} className="w-full py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60">
@@ -351,7 +385,7 @@ export default function MovementsPage() {
                 : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
-            {tab === 'history' ? 'Histórico' : 'Nova Movimentação'}
+            {tab === 'history' ? 'HistÃ³rico' : 'Nova MovimentaÃ§Ã£o'}
           </button>
         ))}
       </div>
@@ -378,7 +412,7 @@ export default function MovementsPage() {
                 <input
                   value={filterSearch}
                   onChange={(e) => { setFilterSearch(e.target.value); setPage(1); }}
-                  placeholder="Produto, referência..."
+                  placeholder="Produto, SKU, código interno..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -392,7 +426,7 @@ export default function MovementsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Data até</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Data atÃ©</label>
                 <input
                   type="date"
                   value={filterDateTo}
@@ -409,7 +443,7 @@ export default function MovementsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Data', 'Tipo', 'Produto', 'Depósito', 'Qtd', 'Referência', 'Usuário'].map((h) => (
+                    {['Data', 'Tipo', 'Produto', 'DepÃ³sito', 'Qtd', 'ReferÃªncia', 'UsuÃ¡rio'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
                     ))}
                   </tr>
@@ -428,7 +462,7 @@ export default function MovementsPage() {
                   ) : movements.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
-                        Nenhuma movimentação encontrada
+                        Nenhuma movimentaÃ§Ã£o encontrada
                       </td>
                     </tr>
                   ) : (
@@ -443,14 +477,14 @@ export default function MovementsPage() {
                         <td className="px-4 py-3 text-sm text-gray-900 max-w-[180px] truncate">{m.product?.name ?? '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                           {m.warehouse?.name ?? '-'}
-                          {m.toWarehouse && <span className="text-gray-400"> → {m.toWarehouse.name}</span>}
+                          {m.toWarehouse && <span className="text-gray-400"> â†’ {m.toWarehouse.name}</span>}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           <span className={m.type === 'exit' ? 'text-red-600' : m.type === 'entry' ? 'text-green-600' : 'text-gray-900'}>
-                            {m.type === 'exit' ? '-' : m.type === 'entry' ? '+' : ''}{m.quantity}
+                            {m.type === 'exit' ? '-' : m.type === 'entry' ? '+' : ''}{formatQuantity(m.quantity)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{m.reference ?? '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{m.notes ?? m.reference ?? '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-500">{m.user?.name ?? '-'}</td>
                       </tr>
                     ))
@@ -475,3 +509,5 @@ export default function MovementsPage() {
     </div>
   );
 }
+
+

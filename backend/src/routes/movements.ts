@@ -64,7 +64,7 @@ router.post('/entry', authenticate, authorize('admin', 'manager', 'operator'), a
           userId: req.user!.id,
         },
         include: {
-          product: { select: { id: true, name: true, sku: true } },
+          product: { select: { id: true, name: true, sku: true, internalCode: true } },
           warehouse: { select: { id: true, name: true } },
         },
       });
@@ -116,7 +116,7 @@ router.post('/exit', authenticate, authorize('admin', 'manager', 'operator'), as
           userId: req.user!.id,
         },
         include: {
-          product: { select: { id: true, name: true, sku: true } },
+          product: { select: { id: true, name: true, sku: true, internalCode: true } },
           warehouse: { select: { id: true, name: true } },
         },
       });
@@ -174,7 +174,7 @@ router.post('/transfer', authenticate, authorize('admin', 'manager', 'operator')
           referenceType: 'manual',
         },
         include: {
-          product: { select: { id: true, name: true, sku: true } },
+          product: { select: { id: true, name: true, sku: true, internalCode: true } },
           warehouse: { select: { id: true, name: true } },
           toWarehouse: { select: { id: true, name: true } },
         },
@@ -192,31 +192,47 @@ router.post('/transfer', authenticate, authorize('admin', 'manager', 'operator')
 // POST /api/movements/adjustment
 router.post('/adjustment', authenticate, authorize('admin', 'manager'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { productId, warehouseId, batchId, newQuantity, notes } = req.body;
+    const { productId, warehouseId, batchId, newQuantity, quantity, notes, newCost } = req.body;
+    const targetQuantity = newQuantity ?? quantity;
 
-    if (!productId || !warehouseId || newQuantity === undefined) {
+    if (!productId || !warehouseId || targetQuantity === undefined) {
       res.status(400).json({ success: false, error: 'productId, warehouseId e newQuantity são obrigatórios' });
       return;
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUnique({ where: { id: productId }, select: { cost: true } });
+      if (!product) throw new Error('Produto nÃ£o encontrado');
+
       const balance = await tx.stockBalance.findFirst({
         where: { productId, warehouseId, batchId: batchId || null },
       });
 
       const currentQty = balance ? balance.quantity : 0;
-      const delta = newQuantity - currentQty;
+      const nextQuantity = Number(targetQuantity);
+      const hasCostAdjustment = newCost !== undefined && newCost !== null && newCost !== '';
+      const nextCost = hasCostAdjustment ? Number(newCost) : null;
+      const delta = nextQuantity - currentQty;
 
       if (balance) {
         await tx.stockBalance.update({
           where: { id: balance.id },
-          data: { quantity: newQuantity },
+          data: { quantity: nextQuantity },
         });
       } else {
         await tx.stockBalance.create({
-          data: { productId, warehouseId, batchId: batchId || null, quantity: newQuantity },
+          data: { productId, warehouseId, batchId: batchId || null, quantity: nextQuantity },
         });
       }
+
+      if (hasCostAdjustment) {
+        await tx.product.update({
+          where: { id: productId },
+          data: { cost: nextCost! },
+        });
+      }
+
+      const costNote = hasCostAdjustment ? ` | Custo: ${product.cost} -> ${nextCost}` : '';
 
       const movement = await tx.stockMovement.create({
         data: {
@@ -225,12 +241,15 @@ router.post('/adjustment', authenticate, authorize('admin', 'manager'), async (r
           warehouseId,
           batchId: batchId || null,
           quantity: delta,
-          notes: notes || `Ajuste de estoque: ${currentQty} -> ${newQuantity}`,
+          unitCost: nextCost,
+          previousCost: product.cost,
+          newCost: nextCost,
+          notes: notes || `Ajuste de estoque: ${currentQty} -> ${nextQuantity}${costNote}`,
           userId: req.user!.id,
           referenceType: 'adjustment',
         },
         include: {
-          product: { select: { id: true, name: true, sku: true } },
+          product: { select: { id: true, name: true, sku: true, internalCode: true } },
           warehouse: { select: { id: true, name: true } },
         },
       });
@@ -238,8 +257,9 @@ router.post('/adjustment', authenticate, authorize('admin', 'manager'), async (r
     });
 
     res.status(201).json({ success: true, data: result });
-  } catch {
-    res.status(500).json({ success: false, error: 'Erro ao ajustar estoque' });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao ajustar estoque';
+    res.status(500).json({ success: false, error: msg });
   }
 });
 
@@ -249,12 +269,21 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
-    const { productId, warehouseId, type, dateFrom, dateTo } = req.query;
+    const { productId, warehouseId, type, dateFrom, dateTo, search } = req.query;
 
     const where: Record<string, unknown> = {};
     if (productId) where.productId = productId as string;
     if (warehouseId) where.warehouseId = warehouseId as string;
     if (type) where.type = type as string;
+    if (search) {
+      where.OR = [
+        { product: { name: { contains: search as string } } },
+        { product: { sku: { contains: search as string } } },
+        { product: { internalCode: { contains: search as string } } },
+        { notes: { contains: search as string } },
+        { referenceType: { contains: search as string } },
+      ];
+    }
     if (dateFrom || dateTo) {
       where.createdAt = {
         ...(dateFrom && { gte: new Date(dateFrom as string) }),
@@ -268,7 +297,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
         take: limit,
         where,
         include: {
-          product: { select: { id: true, name: true, sku: true } },
+          product: { select: { id: true, name: true, sku: true, internalCode: true, unit: true, cost: true } },
           warehouse: { select: { id: true, name: true } },
           toWarehouse: { select: { id: true, name: true } },
           user: { select: { id: true, name: true } },

@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, CheckCircle, XCircle, ClipboardList } from 'lucide-react';
 import api from '../lib/api';
 import { useToast } from '../lib/toast';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatQuantity } from '../lib/utils';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Badge from '../components/Badge';
@@ -12,11 +12,77 @@ import { useAuth } from '../lib/auth';
 interface Product {
   id: string;
   sku: string;
+  internalCode?: string;
   name: string;
   unit: string;
   cost: number;
   price: number;
   type: 'component' | 'harness';
+}
+
+function CreateHarnessModal({ onClose }: { onClose: () => void }) {
+  const { success, error } = useToast();
+  const qc = useQueryClient();
+  const [sku, setSku] = useState('');
+  const [internalCode, setInternalCode] = useState('');
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('0');
+  const [location, setLocation] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: async () =>
+      api.post('/bom/harnesses', {
+        sku: sku || undefined,
+        internalCode: internalCode || undefined,
+        name,
+        price: parseFloat(price) || 0,
+        location: location || undefined,
+        unit: 'UN',
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['harnesses'] });
+      success('Chicote criado. Agora adicione os componentes da BOM.');
+      onClose();
+    },
+    onError: () => error('Erro ao criar chicote'),
+  });
+
+  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Novo Chicote / Produto para BOM" size="md">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+            <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} placeholder="Gerado se vazio" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CÃ³digo interno</label>
+            <input value={internalCode} onChange={(e) => setInternalCode(e.target.value)} className={inputClass} />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nome do chicote *</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">PreÃ§o de venda (R$)</label>
+            <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">LocalizaÃ§Ã£o</label>
+            <input value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700">Cancelar</button>
+          <button type="button" disabled={!name || mutation.isPending} onClick={() => mutation.mutate()} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">Criar Chicote</button>
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
 interface BomItem {
@@ -106,7 +172,7 @@ function AddItemModal({
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bom', harnessId] });
-      success('Componente adicionado à BOM!');
+      success('Componente adicionado Ã  BOM!');
       onClose();
     },
     onError: (err: unknown) => {
@@ -118,14 +184,14 @@ function AddItemModal({
   });
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Adicionar Componente à BOM" size="md">
+    <Modal isOpen={true} onClose={onClose} title="Adicionar Componente Ã  BOM" size="md">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Componente *</label>
           <div className="relative" ref={dropdownRef}>
             <input
               type="text"
-              value={selectedComponent ? `${selectedComponent.sku} — ${selectedComponent.name}` : search}
+              value={selectedComponent ? `${selectedComponent.sku} â€” ${selectedComponent.name}` : search}
               onChange={(e) => {
                 setSelectedComponent(null);
                 setSearch(e.target.value);
@@ -175,7 +241,7 @@ function AddItemModal({
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Observações opcionais"
+            placeholder="ObservaÃ§Ãµes opcionais"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -304,6 +370,7 @@ export default function BomPage() {
   const qc = useQueryClient();
 
   const [selectedHarnessId, setSelectedHarnessId] = useState<string | null>(null);
+  const [showCreateHarnessModal, setShowCreateHarnessModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editItem, setEditItem] = useState<BomItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<BomItem | null>(null);
@@ -383,14 +450,9 @@ export default function BomPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">BOM — Lista de Materiais</h1>
-        <p className="text-sm text-gray-500 mt-1">Gerencie a estrutura de materiais dos chicotes elétricos</p>
-      </div>
-
-      <div className="flex gap-6 h-[calc(100vh-220px)]">
-        {/* Left panel — harness list */}
-        <div className="w-1/3 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h1 className="text-2xl font-bold text-gray-900">BOM - Lista de Materiais</h1><p className="text-sm text-gray-500 mt-1">Gerencie a estrutura de materiais dos chicotes eletricos</p></div>{canWrite && (<button onClick={() => setShowCreateHarnessModal(true)} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"><Plus className="w-4 h-4" />Novo Chicote</button>)}</div><div className="flex flex-col xl:flex-row gap-6 min-h-[calc(100vh-190px)]">
+        {/* Left panel â€” harness list */}
+        <div className="w-full xl:w-[360px] flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
             <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <ClipboardList className="w-4 h-4" />
@@ -426,7 +488,7 @@ export default function BomPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="font-mono text-xs text-gray-500">{h.sku}</p>
-                        <p className="text-sm font-medium text-gray-900 truncate">{h.name}</p>
+                        <p className="text-sm font-medium text-gray-900 whitespace-normal break-words">{h.name}</p>
                       </div>
                       <p className="text-xs text-gray-500 whitespace-nowrap">
                         {formatCurrency(h.price)}
@@ -439,8 +501,8 @@ export default function BomPage() {
           </div>
         </div>
 
-        {/* Right panel — BOM */}
-        <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Right panel â€” BOM */}
+        <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {!selectedHarnessId ? (
             <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-3">
               <ClipboardList className="w-12 h-12 text-gray-200" />
@@ -461,7 +523,7 @@ export default function BomPage() {
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900">{bom?.harness.name}</h3>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    Preço: {formatCurrency(bom?.harness.price ?? 0)}
+                    PreÃ§o: {formatCurrency(bom?.harness.price ?? 0)}
                   </p>
                 </div>
                 {canWrite && (
@@ -480,7 +542,7 @@ export default function BomPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      {['SKU', 'Componente', 'Quantidade', 'Unidade', 'Custo Unit.', 'Custo Total', 'Notas', 'Ações'].map((h) => (
+                      {['SKU', 'Componente', 'Quantidade', 'Unidade', 'Custo Unit.', 'Custo Total', 'Notas', 'AÃ§Ãµes'].map((h) => (
                         <th
                           key={h}
                           className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap"
@@ -494,7 +556,7 @@ export default function BomPage() {
                     {items.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="px-4 py-10 text-center text-gray-400 text-sm">
-                          Nenhum componente na BOM. {canWrite && 'Clique em "Adicionar Componente" para começar.'}
+                          Nenhum componente na BOM. {canWrite && 'Clique em "Adicionar Componente" para comeÃ§ar.'}
                         </td>
                       </tr>
                     ) : (
@@ -503,7 +565,7 @@ export default function BomPage() {
                           <td className="px-4 py-3 text-sm font-mono text-gray-500">{item.component.sku}</td>
                           <td className="px-4 py-3 text-sm text-gray-900">{item.component.name}</td>
                           <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                            {item.quantity.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
+                            {formatQuantity(item.quantity)}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">{item.component.unit}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(item.component.cost)}</td>
@@ -540,7 +602,7 @@ export default function BomPage() {
                 </table>
               </div>
 
-              {/* Footer — total cost */}
+              {/* Footer â€” total cost */}
               {items.length > 0 && (
                 <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
                   <div className="flex items-center justify-end gap-4">
@@ -566,13 +628,13 @@ export default function BomPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Depósito (opcional)</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">DepÃ³sito (opcional)</label>
                     <select
                       value={feasWarehouseId}
                       onChange={(e) => setFeasWarehouseId(e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Todos os depósitos</option>
+                      <option value="">Todos os depÃ³sitos</option>
                       {warehouses.map((w) => (
                         <option key={w.id} value={w.id}>{w.name}</option>
                       ))}
@@ -596,12 +658,12 @@ export default function BomPage() {
                     {feasibilityData.allSufficient ? (
                       <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm font-medium">
                         <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                        Produzir {parseFloat(feasQty).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} unidade(s) é VIÁVEL
+                        Produzir {formatQuantity(parseFloat(feasQty))} unidade(s) Ã© VIÃVEL
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm font-medium">
                         <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                        INVIÁVEL —{' '}
+                        INVIÃVEL â€”{' '}
                         {feasibilityData.feasibility.filter((f) => !f.sufficient).length} componente(s)
                         insuficiente(s)
                       </div>
@@ -612,7 +674,7 @@ export default function BomPage() {
                       <table className="min-w-full divide-y divide-gray-200 text-sm">
                         <thead className="bg-gray-50">
                           <tr>
-                            {['SKU', 'Componente', 'Unidade', 'Necessário', 'Disponível', 'Situação'].map((h) => (
+                            {['SKU', 'Componente', 'Unidade', 'NecessÃ¡rio', 'DisponÃ­vel', 'SituaÃ§Ã£o'].map((h) => (
                               <th key={h} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                 {h}
                               </th>
@@ -629,10 +691,10 @@ export default function BomPage() {
                               <td className="px-3 py-2 text-gray-900">{f.name}</td>
                               <td className="px-3 py-2 text-gray-600">{f.unit}</td>
                               <td className="px-3 py-2 font-medium text-gray-900">
-                                {f.required.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
+                                {formatQuantity(f.required)}
                               </td>
                               <td className="px-3 py-2 font-medium text-gray-900">
-                                {f.available.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
+                                {formatQuantity(f.available)}
                               </td>
                               <td className="px-3 py-2">
                                 {f.sufficient ? (
@@ -655,6 +717,10 @@ export default function BomPage() {
       </div>
 
       {/* Modals */}
+      {showCreateHarnessModal && (
+        <CreateHarnessModal onClose={() => setShowCreateHarnessModal(false)} />
+      )}
+
       {showAddModal && selectedHarnessId && (
         <AddItemModal harnessId={selectedHarnessId} onClose={() => setShowAddModal(false)} />
       )}
@@ -672,10 +738,12 @@ export default function BomPage() {
         onClose={() => setDeleteItem(null)}
         onConfirm={() => deleteItem && deleteItemMutation.mutate(deleteItem.id)}
         title="Remover Componente da BOM"
-        message={`Deseja remover "${deleteItem?.component.name}" da BOM? Esta ação não pode ser desfeita.`}
+        message={`Deseja remover "${deleteItem?.component.name}" da BOM? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`}
         confirmLabel="Remover"
         isLoading={deleteItemMutation.isPending}
       />
     </div>
   );
 }
+
+
